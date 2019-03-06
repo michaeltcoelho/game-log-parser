@@ -1,6 +1,6 @@
 import enum
 import re
-from typing import List, Tuple
+from typing import Tuple
 
 
 class Player:
@@ -11,7 +11,7 @@ class Player:
     def __str__(self):
         return self.name
 
-    def is_world_player(self):
+    def is_world(self):
         return self.name == '<world>'
 
 
@@ -23,7 +23,7 @@ class EventType(enum.Enum):
 class EventHandler:
 
     def __init__(self, repository: 'GameRepository' = None) -> None:
-        self.repository: 'GameRepository' = repository
+        self.repository = repository
 
     def handle(self, event: str) -> None:
         raise NotImplementedError()
@@ -33,6 +33,12 @@ class InitGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
         print(f'InitGame: {event}')
+
+
+class ShutDownGameEventHandler(EventHandler):
+
+    def handle(self, event: str) -> None:
+        print(f'ShutDown: {event}')
 
 
 class KillEventHandler(EventHandler):
@@ -47,6 +53,20 @@ class KillEventHandler(EventHandler):
         match = self.players_pattern.findall(event)
         killer, killed = match[0]
         return Player(killer), Player(killed)
+
+
+class EventObservable:
+
+    def __init__(self) -> None:
+        self.event_handlers = []
+
+    def add_handler(self, event_type: str, event_handler: EventHandler) -> None:
+        self.event_handlers.append((event_type, event_handler))
+
+    def notify(self, event_type: str, event: str):
+        for _type, event_handler in self.event_handlers:
+            if _type == event_type:
+                event_handler.handle(event)
 
 
 class GameRepository:
