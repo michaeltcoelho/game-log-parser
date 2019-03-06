@@ -1,5 +1,7 @@
+from unittest import mock
+
 from parser import (EventType, EventHandler, InitGameEventHandler,
-                    KillEventHandler, EventObservable)
+                    KillEventHandler, EventObservable, MemoryGameRepository)
 
 
 class TestEventHandler:
@@ -78,3 +80,40 @@ class TestEventObservable:
 
         assert repository.has_initialized()
         assert repository.is_killed()
+
+
+class TestGameRepository:
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_add_new_game(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+
+        assert memory_repo.active_game_uid == 'abc'
+
+        active_game = memory_repo.get_active_game()
+        assert active_game['total_kills'] == 0
+        assert active_game['players'] == []
+        assert active_game['kills'] == {}
+        assert active_game['exited'] is False
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_active_game_uid_be_the_last_added(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('xyz')
+        memory_repo.add_new_game('abc')
+        assert memory_repo.active_game_uid == 'abc'
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_exit_active_game(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+
+        active_game = memory_repo.get_active_game()
+
+        assert active_game['exited'] is False
+
+        memory_repo.exit_active_game()
+
+        exited_game = memory_repo.get_active_game()
+        assert exited_game['exited'] is True

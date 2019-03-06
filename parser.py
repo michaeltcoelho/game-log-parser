@@ -1,3 +1,4 @@
+import abc
 import enum
 import re
 from typing import Tuple
@@ -20,19 +21,20 @@ class EventType(enum.Enum):
     KILL = 'Kill'
 
 
-class EventHandler:
+class EventHandler(abc.ABC):
 
     def __init__(self, repository: 'GameRepository' = None) -> None:
         self.repository = repository
 
+    @abc.abstractmethod
     def handle(self, event: str) -> None:
-        raise NotImplementedError()
+        pass
 
 
 class InitGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        print(f'InitGame: {event}')
+        pass
 
 
 class ShutDownGameEventHandler(EventHandler):
@@ -69,5 +71,45 @@ class EventObservable:
                 event_handler.handle(event)
 
 
-class GameRepository:
-    pass
+class GameRepository(abc.ABC):
+
+    @abc.abstractmethod
+    def add_new_game(self, uid) -> None:
+        pass
+
+    @abc.abstractmethod
+    def exit_active_game(self) -> None:
+        pass
+
+    @abc.abstractmethod
+    def get_active_game(self) -> dict:
+        pass
+
+
+class MemoryGameRepository(GameRepository):
+
+    store = {}
+    active_game_uid = ''
+
+    def add_new_game(self, uid) -> None:
+        game = {
+            'total_kills': 0,
+            'players': [],
+            'kills': {},
+            'exited': False
+        }
+        self.store[uid] = game
+        self.active_game_uid = uid
+
+    def exit_active_game(self) -> None:
+        active_game = self.get_active_game()
+        active_game['exited'] = True
+
+    def get_active_game(self):
+        try:
+            game = self.store[self.active_game_uid]
+        except KeyError as err:
+            # TODO: impl. informative exception
+            raise Exception(str(err))
+        else:
+            return game
