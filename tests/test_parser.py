@@ -1,7 +1,8 @@
 from unittest import mock
 
 from parser import (EventType, EventHandler, InitGameEventHandler,
-                    KillEventHandler, EventObservable, MemoryGameRepository)
+                    KillEventHandler, EventObservable, GameRepository,
+                    MemoryGameRepository)
 
 
 class TestEventHandler:
@@ -41,45 +42,42 @@ class TestEventObservable:
 
     def test_should_notify_handlers(self):
 
-        class DummyRepository:
+        class DummyRepository(GameRepository):
 
             def __init__(self):
-                self.initialized = False
-                self.killed = False
+                self.game_added = False
+                self.active_game_exited = False
 
-            def initialize(self):
-                self.initialized = True
+            def add_new_game(self, uid) -> None:
+                self.game_added = True
 
-            def has_initialized(self):
-                return self.initialized
+            def exit_active_game(self) -> None:
+                self.active_game_exited = True
 
-            def kill(self):
-                self.killed = True
-
-            def is_killed(self):
-                return self.killed
+            def get_active_game(self) -> dict:
+                pass
 
         class DummyInitGameEventHandler(EventHandler):
 
             def handle(self, event: str) -> None:
-                self.repository.initialize()
+                self.repository.add_new_game('abc')
 
-        class DummyKillEventHandler(EventHandler):
+        class DummyExitGameEventHandler(EventHandler):
 
             def handle(self, event: str) -> None:
-                self.repository.kill()
+                self.repository.exit_active_game()
 
         repository = DummyRepository()
 
         event_stream = EventObservable()
-        event_stream.add_handler(EventType.KILL, DummyKillEventHandler(repository))
+        event_stream.add_handler(EventType.KILL, DummyExitGameEventHandler(repository))
         event_stream.add_handler(EventType.INIT_GAME,
                                  DummyInitGameEventHandler(repository))
         event_stream.notify(EventType.INIT_GAME, 'InitGame: ')
         event_stream.notify(EventType.KILL, 'Kill: ')
 
-        assert repository.has_initialized()
-        assert repository.is_killed()
+        assert repository.game_added is True
+        assert repository.active_game_exited is True
 
 
 class TestGameRepository:
