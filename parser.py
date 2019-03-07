@@ -2,7 +2,7 @@ import abc
 import enum
 import re
 import uuid
-from typing import Tuple
+from typing import Tuple, Generator
 
 
 class GameDoesNotExist(Exception):
@@ -167,9 +167,52 @@ class MemoryGameRepository(GameRepository):
     def decrease_kills_for_player(self, player: Player, kills: int) -> None:
         active_game = self.get_active_game()
         game_kills = active_game['kills']
+        game_kills.setdefault(player.name, 0)
         if game_kills[player.name] > 0:
             game_kills[player.name] -= kills
 
     def increment_total_kills(self) -> None:
         active_game = self.get_active_game()
         active_game['total_kills'] += 1
+
+
+class LogParser:
+
+    event_type_pattern = re.compile(r'(?P<time>\d{,2}:\d{2}) (?P<event_type>\w+):')
+    shutdown_game_pattern = re.compile(r'(\s.*)?(?P<time>\d{,3}:\d{2}) [ -]+')
+
+    def __init__(self, game_repository: GameRepository) -> None:
+        self.game_repository = game_repository
+        self.event_observable = EventObservable()
+        self._register_events_handlers()
+
+    def _register_events_handlers(self):
+        self.event_observable.add_handler(EventType.INIT_GAME,
+                                          InitGameEventHandler(self.game_repository))
+        self.event_observable.add_handler(EventType.SHUTDOWN_GAME,
+                                          ShutdownGameEventHandler(self.game_repository))
+        self.event_observable.add_handler(EventType.KILL,
+                                          KillEventHandler(self.game_repository))
+
+    def parse(self, log_file: str) -> None:
+        file = self._read_log_file(log_file)
+        for event in file:
+            event_type = self._get_event_type(event)
+            if event_type is not None:
+                self.event_observable.notify(event_type, event)
+
+    def _get_event_type(self, event: str) -> str:
+        has_shuttdown_pattern = self.shutdown_game_pattern.match(event)
+        if has_shuttdown_pattern:
+            return EventType.SHUTDOWN_GAME.value
+        match = self.event_type_pattern.findall(event)
+        event_time, event_type = match[0]
+        try:
+            return EventType(event_type)
+        except ValueError:
+            return None
+
+    def _read_log_file(self, log_file: str) -> Generator[str, None, None]:
+        with open(log_file, 'r') as file:
+            for line in file:
+                yield str(line)
