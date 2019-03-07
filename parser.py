@@ -89,6 +89,14 @@ class EventObservable:
 class GameRepository(abc.ABC):
 
     @abc.abstractmethod
+    def get_games(self):
+        pass
+
+    @abc.abstractmethod
+    def get_game_by_uid(self, uid: str) -> dict:
+        pass
+
+    @abc.abstractmethod
     def add_new_game(self, uid) -> None:
         pass
 
@@ -125,6 +133,17 @@ class MemoryGameRepository(GameRepository):
 
     store = {}
     active_game_uid = ''
+
+    def get_games(self):
+        return self.store
+
+    def get_game_by_uid(self, uid: str) -> dict:
+        try:
+            game = self.store[uid]
+        except KeyError:
+            raise GameDoesNotExist()
+        else:
+            return game
 
     def add_new_game(self, uid) -> None:
         game = {

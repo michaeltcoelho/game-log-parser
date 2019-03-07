@@ -1,8 +1,10 @@
 from unittest import mock
 
+import pytest
+
 from parser import (EventType, EventHandler, InitGameEventHandler,
                     ShutdownGameEventHandler, KillEventHandler, EventObservable,
-                    GameRepository, MemoryGameRepository, Player)
+                    GameRepository, MemoryGameRepository, Player, GameDoesNotExist)
 
 
 class TestEventHandler:
@@ -82,6 +84,42 @@ class TestEventHandler:
 
 class TestEventObservable:
 
+    class DummyRepository(GameRepository):
+
+        def __init__(self):
+            self.game_added = False
+            self.active_game_shutted_down = False
+
+        def get_games(self):
+            pass
+
+        def get_game_by_uid(self, uid):
+            pass
+
+        def add_new_game(self, uid):
+            self.game_added = True
+
+        def shutdown_active_game(self):
+            self.active_game_shutted_down = True
+
+        def get_active_game(self):
+            pass
+
+        def is_active_game_shutted_down(self):
+            return self.active_game_shutted_down
+
+        def add_player(self, player):
+            pass
+
+        def increase_kills_for_player(self, player, kills):
+            pass
+
+        def decrease_kills_for_player(self, player, kills):
+            pass
+
+        def increment_total_kills(self):
+            pass
+
     def test_should_add_handler(self):
 
         class DummyInitGameHandler:
@@ -98,36 +136,6 @@ class TestEventObservable:
 
     def test_should_notify_handlers(self):
 
-        class DummyRepository(GameRepository):
-
-            def __init__(self):
-                self.game_added = False
-                self.active_game_shutted_down = False
-
-            def add_new_game(self, uid):
-                self.game_added = True
-
-            def shutdown_active_game(self):
-                self.active_game_shutted_down = True
-
-            def get_active_game(self):
-                pass
-
-            def is_active_game_shutted_down(self):
-                return self.active_game_shutted_down
-
-            def add_player(self, player):
-                pass
-
-            def increase_kills_for_player(self, player, kills):
-                pass
-
-            def decrease_kills_for_player(self, player, kills):
-                pass
-
-            def increment_total_kills(self):
-                pass
-
         class DummyInitGameEventHandler(EventHandler):
 
             def handle(self, event: str):
@@ -138,7 +146,7 @@ class TestEventObservable:
             def handle(self, event: str):
                 self.repository.shutdown_active_game()
 
-        repository = DummyRepository()
+        repository = TestEventObservable.DummyRepository()
 
         event_stream = EventObservable()
         event_stream.add_handler(EventType.SHUTDOWN_GAME,
@@ -237,3 +245,18 @@ class TestMemoryGameRepository:
 
         memory_repo.increment_total_kills()
         assert active_game['total_kills'] == 2
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_get_games(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+        assert 'abc' in memory_repo.get_games()
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_get_games_by_id(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+        assert memory_repo.get_game_by_uid('abc')
+
+        with pytest.raises(GameDoesNotExist):
+            memory_repo.get_game_by_uid('asdasdasd')
