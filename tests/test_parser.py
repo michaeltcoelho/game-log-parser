@@ -23,6 +23,13 @@ class TestEventHandler:
         assert str(killer) == 'Foo'
         assert str(killed) == 'Bar'
 
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_handle_init_game_event(self):
+        memory_repo = MemoryGameRepository()
+        handler = InitGameEventHandler(memory_repo)
+        handler.handle('  0:00 InitGame: \\sv_floodProtect\\1\\sv_maxPing\0')
+        assert len(memory_repo.store) == 1
+
 
 class TestEventObservable:
 
@@ -46,13 +53,13 @@ class TestEventObservable:
 
             def __init__(self):
                 self.game_added = False
-                self.active_game_exited = False
+                self.active_game_shutted_down = False
 
             def add_new_game(self, uid) -> None:
                 self.game_added = True
 
-            def exit_active_game(self) -> None:
-                self.active_game_exited = True
+            def shutdown_active_game(self) -> None:
+                self.active_game_shutted_down = True
 
             def get_active_game(self) -> dict:
                 pass
@@ -62,22 +69,23 @@ class TestEventObservable:
             def handle(self, event: str) -> None:
                 self.repository.add_new_game('abc')
 
-        class DummyExitGameEventHandler(EventHandler):
+        class DummyShutdownGameEventHandler(EventHandler):
 
             def handle(self, event: str) -> None:
-                self.repository.exit_active_game()
+                self.repository.shutdown_active_game()
 
         repository = DummyRepository()
 
         event_stream = EventObservable()
-        event_stream.add_handler(EventType.KILL, DummyExitGameEventHandler(repository))
+        event_stream.add_handler(EventType.SHUTDOWN_GAME,
+                                 DummyShutdownGameEventHandler(repository))
         event_stream.add_handler(EventType.INIT_GAME,
                                  DummyInitGameEventHandler(repository))
         event_stream.notify(EventType.INIT_GAME, 'InitGame: ')
-        event_stream.notify(EventType.KILL, 'Kill: ')
+        event_stream.notify(EventType.SHUTDOWN_GAME, 'ShutdownGame: ')
 
         assert repository.game_added is True
-        assert repository.active_game_exited is True
+        assert repository.active_game_shutted_down is True
 
 
 class TestGameRepository:
@@ -93,7 +101,7 @@ class TestGameRepository:
         assert active_game['total_kills'] == 0
         assert active_game['players'] == []
         assert active_game['kills'] == {}
-        assert active_game['exited'] is False
+        assert active_game['shutted_down'] is False
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_active_game_uid_be_the_last_added(self):
@@ -103,15 +111,15 @@ class TestGameRepository:
         assert memory_repo.active_game_uid == 'abc'
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_exit_active_game(self):
+    def test_should_shutdown_active_game(self):
         memory_repo = MemoryGameRepository()
         memory_repo.add_new_game('abc')
 
         active_game = memory_repo.get_active_game()
 
-        assert active_game['exited'] is False
+        assert active_game['shutted_down'] is False
 
-        memory_repo.exit_active_game()
+        memory_repo.shutdown_active_game()
 
-        exited_game = memory_repo.get_active_game()
-        assert exited_game['exited'] is True
+        shutted_down_game = memory_repo.get_active_game()
+        assert shutted_down_game['shutted_down'] is True

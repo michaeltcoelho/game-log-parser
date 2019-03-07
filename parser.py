@@ -1,6 +1,7 @@
 import abc
 import enum
 import re
+import uuid
 from typing import Tuple
 
 
@@ -18,6 +19,7 @@ class Player:
 
 class EventType(enum.Enum):
     INIT_GAME = 'InitGame'
+    SHUTDOWN_GAME = 'ShutdownGame'
     KILL = 'Kill'
 
 
@@ -34,7 +36,8 @@ class EventHandler(abc.ABC):
 class InitGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        pass
+        uid = str(uuid.uuid4())
+        self.repository.add_new_game(uid)
 
 
 class ShutDownGameEventHandler(EventHandler):
@@ -78,7 +81,7 @@ class GameRepository(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def exit_active_game(self) -> None:
+    def shutdown_active_game(self) -> None:
         pass
 
     @abc.abstractmethod
@@ -96,14 +99,14 @@ class MemoryGameRepository(GameRepository):
             'total_kills': 0,
             'players': [],
             'kills': {},
-            'exited': False
+            'shutted_down': False
         }
         self.store[uid] = game
         self.active_game_uid = uid
 
-    def exit_active_game(self) -> None:
+    def shutdown_active_game(self) -> None:
         active_game = self.get_active_game()
-        active_game['exited'] = True
+        active_game['shutted_down'] = True
 
     def get_active_game(self):
         try:
