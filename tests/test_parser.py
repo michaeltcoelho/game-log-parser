@@ -1,8 +1,8 @@
 from unittest import mock
 
 from parser import (EventType, EventHandler, InitGameEventHandler,
-                    KillEventHandler, EventObservable, GameRepository,
-                    MemoryGameRepository)
+                    ShutdownGameEventHandler, KillEventHandler, EventObservable,
+                    GameRepository, MemoryGameRepository)
 
 
 class TestEventHandler:
@@ -29,6 +29,29 @@ class TestEventHandler:
         handler = InitGameEventHandler(memory_repo)
         handler.handle('  0:00 InitGame: \\sv_floodProtect\\1\\sv_maxPing\0')
         assert len(memory_repo.store) == 1
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_handle_shutdown_game_event(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+        handler = ShutdownGameEventHandler(memory_repo)
+        handler.handle('20:37 ShutdownGame:')
+        shutted_down_game = memory_repo.get_active_game()
+        assert shutted_down_game['shutted_down'] is True
+
+    @mock.patch.object(MemoryGameRepository, 'store', {})
+    def test_should_handle_kill_game_evet(self):
+        memory_repo = MemoryGameRepository()
+        memory_repo.add_new_game('abc')
+        handler = KillEventHandler(memory_repo)
+        event = '1:23 Kill: 5 7 7: Oootsimo killed Assasinu Credi by MOD_ROCKET_SPLASH'
+        handler.handle(event)
+
+        active_game = memory_repo.get_active_game()
+        assert active_game['total_kills'] == 1
+        assert 'Oootsimo' in active_game['players']
+        assert 'Assasinu' in active_game['players']
+        assert active_game['kills']['Ootsimo'] == 1
 
 
 class TestEventObservable:
@@ -64,6 +87,9 @@ class TestEventObservable:
             def get_active_game(self) -> dict:
                 pass
 
+            def is_active_game_shutted_down(self) -> bool:
+                return self.active_game_shutted_down
+
         class DummyInitGameEventHandler(EventHandler):
 
             def handle(self, event: str) -> None:
@@ -85,7 +111,7 @@ class TestEventObservable:
         event_stream.notify(EventType.SHUTDOWN_GAME, 'ShutdownGame: ')
 
         assert repository.game_added is True
-        assert repository.active_game_shutted_down is True
+        assert repository.is_active_game_shutted_down() is True
 
 
 class TestGameRepository:

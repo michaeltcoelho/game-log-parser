@@ -40,10 +40,11 @@ class InitGameEventHandler(EventHandler):
         self.repository.add_new_game(uid)
 
 
-class ShutDownGameEventHandler(EventHandler):
+class ShutdownGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        print(f'ShutDown: {event}')
+        if not self.repository.is_active_game_shutted_down():
+            self.repository.shutdown_active_game()
 
 
 class KillEventHandler(EventHandler):
@@ -88,6 +89,10 @@ class GameRepository(abc.ABC):
     def get_active_game(self) -> dict:
         pass
 
+    @abc.abstractmethod
+    def is_active_game_shutted_down(self) -> bool:
+        pass
+
 
 class MemoryGameRepository(GameRepository):
 
@@ -116,3 +121,7 @@ class MemoryGameRepository(GameRepository):
             raise Exception(str(err))
         else:
             return game
+
+    def is_active_game_shutted_down(self) -> bool:
+        active_game = self.get_active_game()
+        return active_game['shutted_down']
