@@ -5,15 +5,19 @@ import uuid
 from typing import Tuple
 
 
+class GameDoesNotExist(Exception):
+    pass
+
+
 class Player:
 
-    def __init__(self, name):
+    def __init__(self, name) -> None:
         self.name = name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
-    def is_world(self):
+    def is_world(self) -> bool:
         return self.name == '<world>'
 
 
@@ -54,6 +58,13 @@ class KillEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
         player_killer, player_killed = self.get_players(event)
+        if not player_killer.is_world():
+            self.repository.add_player(player_killer)
+            self.repository.increase_kills_for_player(player_killer, 1)
+        else:
+            self.repository.decrease_kills_for_player(player_killed, 1)
+        self.repository.add_player(player_killed)
+        self.repository.increment_total_kills()
 
     def get_players(self, event) -> Tuple[Player, Player]:
         match = self.players_pattern.findall(event)
@@ -93,6 +104,22 @@ class GameRepository(abc.ABC):
     def is_active_game_shutted_down(self) -> bool:
         pass
 
+    @abc.abstractmethod
+    def add_player(self, player: Player) -> None:
+        pass
+
+    @abc.abstractmethod
+    def increase_kills_for_player(self, player: Player, kills: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def decrease_kills_for_player(self, player: Player, kills: int) -> None:
+        pass
+
+    @abc.abstractmethod
+    def increment_total_kills(self):
+        pass
+
 
 class MemoryGameRepository(GameRepository):
 
@@ -116,12 +143,33 @@ class MemoryGameRepository(GameRepository):
     def get_active_game(self):
         try:
             game = self.store[self.active_game_uid]
-        except KeyError as err:
-            # TODO: impl. informative exception
-            raise Exception(str(err))
+        except KeyError:
+            raise GameDoesNotExist()
         else:
             return game
 
     def is_active_game_shutted_down(self) -> bool:
         active_game = self.get_active_game()
         return active_game['shutted_down']
+
+    def add_player(self, player: Player) -> None:
+        active_game = self.get_active_game()
+        players = active_game['players']
+        if player.name not in players:
+            players.append(player.name)
+
+    def increase_kills_for_player(self, player: Player, kills: int) -> None:
+        active_game = self.get_active_game()
+        game_kills = active_game['kills']
+        game_kills.setdefault(player.name, 0)
+        game_kills[player.name] += kills
+
+    def decrease_kills_for_player(self, player: Player, kills: int) -> None:
+        active_game = self.get_active_game()
+        game_kills = active_game['kills']
+        if game_kills[player.name] > 0:
+            game_kills[player.name] -= kills
+
+    def increment_total_kills(self) -> None:
+        active_game = self.get_active_game()
+        active_game['total_kills'] += 1
