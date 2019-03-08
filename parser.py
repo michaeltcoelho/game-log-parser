@@ -2,7 +2,7 @@ import abc
 import enum
 import re
 import uuid
-from typing import List, Tuple, Generator
+from typing import Generator, List, Optional, Tuple
 
 
 class GameDoesNotExist(Exception):
@@ -61,11 +61,9 @@ class Game:
     def has_player(self, name: str) -> bool:
         return any([True for player in self.players if player.name == name])
 
-    def get_player(self, name: str) -> Player:
+    def get_player(self, name: str) -> Optional[Player]:
         player = [player for player in self.players if player.name == name]
-        if not player:
-            raise PlayerDoesNotExist()
-        return player[0]
+        return player[0] if player else None
 
 
 class EventType(enum.Enum):
@@ -118,11 +116,8 @@ class KillEventHandler(EventHandler):
 
     def get_players(self, active_game: Game, event: str) -> Tuple[Player, Player]:
         killer, killed = self._get_players_names(event)
-        player_killer, player_killed = Player(killer), Player(killed)
-        if active_game.has_player(killer):
-            player_killer = active_game.get_player(killer)
-        if active_game.has_player(killed):
-            player_killed = active_game.get_player(killed)
+        player_killer = active_game.get_player(killer) or Player(killer)
+        player_killed = active_game.get_player(killed) or Player(killed)
         return player_killer, player_killed
 
     def _get_players_names(self, event: str) -> Tuple[str, str]:
