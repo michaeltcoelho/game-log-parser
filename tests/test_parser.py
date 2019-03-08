@@ -4,23 +4,26 @@ import pytest
 
 from parser import (EventType, EventHandler, InitGameEventHandler,
                     ShutdownGameEventHandler, KillEventHandler, EventObservable,
-                    GameRepository, MemoryGameRepository, Player, GameDoesNotExist)
+                    GameRepository, MemoryGameRepository, Game, Player,
+                    GameDoesNotExist)
 
 
 class TestEventHandler:
 
     def test_should_get_players_with_world_killer(self):
+        game = Game('abc')
         handler = KillEventHandler()
         event = '1:26 Kill: 1022 4 22: <world> killed Zeh by MOD_TRIGGER_HURT'
-        killer, killed = handler.get_players(event)
+        killer, killed = handler.get_players(game, event)
         assert killer.is_world() is True
         assert not killed.is_world()
         assert str(killed) == 'Zeh'
 
     def test_should_get_players(self):
+        game = Game('abc')
         handler = KillEventHandler()
         event = '1:26 Kill: 1022 4 22: Foo killed Bar by MOD_TRIGGER_HURT'
-        killer, killed = handler.get_players(event)
+        killer, killed = handler.get_players(game, event)
         assert not killer.is_world()
         assert str(killer) == 'Foo'
         assert str(killed) == 'Bar'
@@ -35,39 +38,39 @@ class TestEventHandler:
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_handle_shutdown_game_event(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('abc'))
         handler = ShutdownGameEventHandler(memory_repo)
         handler.handle('20:37 ShutdownGame:')
-        shutted_down_game = memory_repo.get_active_game()
-        assert shutted_down_game['shutted_down'] is True
+        game = memory_repo.get_active_game()
+        assert game.is_shutted_down() is True
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_handle_kill_game_evet(self):
+    def test_should_handle_kill_game_event(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('abc'))
         handler = KillEventHandler(memory_repo)
         event = '1:23 Kill: 5 7 7: Oootsimo killed Assasinu Credi by MOD_ROCKET_SPLASH'
         handler.handle(event)
 
         active_game = memory_repo.get_active_game()
-        assert active_game['total_kills'] == 1
-        assert len(active_game['players']) == 2
-        assert 'Oootsimo' in active_game['players']
-        assert 'Assasinu Credi' in active_game['players']
-        assert active_game['kills']['Oootsimo'] == 1
+        assert active_game.total_kills == 1
+        assert len(active_game.players) == 2
+        assert active_game.has_player('Oootsimo') is True
+        assert active_game.has_player('Assasinu Credi') is True
+        assert active_game.get_player('Oootsimo').kills == 1
 
         event = '1:23 Kill: 5 7 7: Oootsimo killed Fulera by MOD_ROCKET_SPLASH'
         handler.handle(event)
 
-        assert active_game['total_kills'] == 2
-        assert len(active_game['players']) == 3
-        assert 'Fulera' in active_game['players']
-        assert active_game['kills']['Oootsimo'] == 2
+        assert active_game.total_kills == 2
+        assert len(active_game.players) == 3
+        assert active_game.has_player('Fulera') is True
+        assert active_game.get_player('Oootsimo').kills == 2
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_handle_kill_game_event_by_world_player(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('abc'))
         handler = KillEventHandler(memory_repo)
         event = '1:23 Kill: 5 7 7: Oootsimo killed Assasinu Credi by MOD_ROCKET_SPLASH'
         handler.handle(event)
@@ -76,10 +79,10 @@ class TestEventHandler:
         handler.handle(event)
 
         active_game = memory_repo.get_active_game()
-        assert active_game['total_kills'] == 2
-        assert len(active_game['players']) == 2
-        assert '<world>' not in active_game['players']
-        assert active_game['kills']['Oootsimo'] == 0
+        assert active_game.total_kills == 2
+        assert len(active_game.players) == 2
+        assert active_game.has_player('<world>') is False
+        assert active_game.get_player('Oootsimo').kills == 0
 
 
 class TestEventObservable:
@@ -96,29 +99,14 @@ class TestEventObservable:
         def get_game_by_uid(self, uid):
             pass
 
-        def add_new_game(self, uid):
-            self.game_added = True
-
-        def shutdown_active_game(self):
-            self.active_game_shutted_down = True
-
         def get_active_game(self):
             pass
 
-        def is_active_game_shutted_down(self):
-            return self.active_game_shutted_down
+        def add(self, game):
+            self.game_added = True
 
-        def add_player(self, player):
-            pass
-
-        def increase_kills_for_player(self, player, kills):
-            pass
-
-        def decrease_kills_for_player(self, player, kills):
-            pass
-
-        def increment_total_kills(self):
-            pass
+        def update(self, game):
+            self.active_game_shutted_down = True
 
     def test_should_add_handler(self):
 
@@ -139,12 +127,12 @@ class TestEventObservable:
         class DummyInitGameEventHandler(EventHandler):
 
             def handle(self, event: str):
-                self.repository.add_new_game('abc')
+                self.repository.add(None)
 
         class DummyShutdownGameEventHandler(EventHandler):
 
             def handle(self, event: str):
-                self.repository.shutdown_active_game()
+                self.repository.update(None)
 
         repository = TestEventObservable.DummyRepository()
 
@@ -157,105 +145,36 @@ class TestEventObservable:
         event_stream.notify(EventType.SHUTDOWN_GAME, 'ShutdownGame: ')
 
         assert repository.game_added is True
-        assert repository.is_active_game_shutted_down() is True
+        assert repository.active_game_shutted_down is True
 
 
 class TestMemoryGameRepository:
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_add_new_game(self):
+        game = Game('abc')
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-
+        memory_repo.add(game)
+        assert memory_repo.get_active_game() is game
         assert memory_repo.active_game_uid == 'abc'
-
-        active_game = memory_repo.get_active_game()
-        assert active_game['total_kills'] == 0
-        assert active_game['players'] == []
-        assert active_game['kills'] == {}
-        assert active_game['shutted_down'] is False
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_active_game_uid_be_the_last_added(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('xyz')
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('xyz'))
+        memory_repo.add(Game('abc'))
         assert memory_repo.active_game_uid == 'abc'
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_shutdown_active_game(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-
-        assert not memory_repo.is_active_game_shutted_down()
-
-        memory_repo.shutdown_active_game()
-
-        assert memory_repo.is_active_game_shutted_down()
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_add_players(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-        memory_repo.add_player(Player('Fulera'))
-        active_game = memory_repo.get_active_game()
-        assert len(active_game['players'])
-        assert 'Fulera' in active_game['players']
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_not_add_same_player_twice(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-        memory_repo.add_player(Player('Fulera'))
-        memory_repo.add_player(Player('Fulera'))
-        active_game = memory_repo.get_active_game()
-        assert len(active_game['players']) == 1
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_increase_kills_for_player(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-        player = Player('michaeltcoelho')
-        memory_repo.add_player(player)
-        memory_repo.increase_kills_for_player(player, 1)
-
-        active_game = memory_repo.get_active_game()
-        assert active_game['kills'][player.name] == 1
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_decrease_kills_for_player(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-        player = Player('michaeltcoelho')
-        memory_repo.add_player(player)
-        memory_repo.increase_kills_for_player(player, 2)
-        memory_repo.decrease_kills_for_player(player, 1)
-
-        active_game = memory_repo.get_active_game()
-        assert active_game['kills'][player.name] == 1
-
-    @mock.patch.object(MemoryGameRepository, 'store', {})
-    def test_should_increment_total_kills(self):
-        memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
-        active_game = memory_repo.get_active_game()
-
-        memory_repo.increment_total_kills()
-        assert active_game['total_kills'] == 1
-
-        memory_repo.increment_total_kills()
-        assert active_game['total_kills'] == 2
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_get_games(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('abc'))
         assert 'abc' in memory_repo.get_games()
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_get_games_by_id(self):
         memory_repo = MemoryGameRepository()
-        memory_repo.add_new_game('abc')
+        memory_repo.add(Game('abc'))
         assert memory_repo.get_game_by_uid('abc')
 
         with pytest.raises(GameDoesNotExist):

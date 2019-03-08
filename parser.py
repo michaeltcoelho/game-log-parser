@@ -2,10 +2,18 @@ import abc
 import enum
 import re
 import uuid
-from typing import Tuple, Generator
+from typing import List, Tuple, Generator
 
 
 class GameDoesNotExist(Exception):
+    pass
+
+
+class PlayerDoesNotExist(Exception):
+    pass
+
+
+class EventTypeNotMapped(ValueError):
     pass
 
 
@@ -13,12 +21,51 @@ class Player:
 
     def __init__(self, name) -> None:
         self.name = name
+        self.kills = 0
 
     def __str__(self) -> str:
         return self.name
 
     def is_world(self) -> bool:
         return self.name == '<world>'
+
+    def increase_kills(self, kills: int) -> None:
+        self.kills += kills
+
+    def decrease_kills(self, kills: int) -> None:
+        if self.kills > 0:
+            self.kills -= kills
+
+
+class Game:
+
+    def __init__(self, uid: str) -> None:
+        self.uid = uid
+        self.total_kills = 0
+        self.shutted_down = False
+        self.players: List[Player] = []
+
+    def add_player(self, player: Player) -> None:
+        if not self.has_player(player.name):
+            self.players.append(player)
+
+    def increase_total_kills(self) -> None:
+        self.total_kills += 1
+
+    def shutdown(self):
+        self.shutted_down = True
+
+    def is_shutted_down(self) -> bool:
+        return self.shutted_down
+
+    def has_player(self, name: str) -> bool:
+        return any([True for player in self.players if player.name == name])
+
+    def get_player(self, name: str) -> Player:
+        player = [player for player in self.players if player.name == name]
+        if not player:
+            raise PlayerDoesNotExist()
+        return player[0]
 
 
 class EventType(enum.Enum):
@@ -40,15 +87,16 @@ class EventHandler(abc.ABC):
 class InitGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        uid = str(uuid.uuid4())
-        self.repository.add_new_game(uid)
+        game = Game(str(uuid.uuid4()))
+        self.repository.add(game)
 
 
 class ShutdownGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        if not self.repository.is_active_game_shutted_down():
-            self.repository.shutdown_active_game()
+        active_game = self.repository.get_active_game()
+        active_game.shutdown()
+        self.repository.update(active_game)
 
 
 class KillEventHandler(EventHandler):
@@ -57,19 +105,30 @@ class KillEventHandler(EventHandler):
         r'[\d{,2}.+]: (?P<killer><?\w.+>?) killed (?P<killed>\w.+) by')
 
     def handle(self, event: str) -> None:
-        player_killer, player_killed = self.get_players(event)
-        if not player_killer.is_world():
-            self.repository.add_player(player_killer)
-            self.repository.increase_kills_for_player(player_killer, 1)
+        active_game = self.repository.get_active_game()
+        player_killer, player_killed = self.get_players(active_game, event)
+        if player_killer.is_world():
+            player_killed.decrease_kills(1)
         else:
-            self.repository.decrease_kills_for_player(player_killed, 1)
-        self.repository.add_player(player_killed)
-        self.repository.increment_total_kills()
+            active_game.add_player(player_killer)
+            player_killer.increase_kills(1)
+        active_game.add_player(player_killed)
+        active_game.increase_total_kills()
+        self.repository.update(active_game)
 
-    def get_players(self, event) -> Tuple[Player, Player]:
+    def get_players(self, active_game: Game, event: str) -> Tuple[Player, Player]:
+        killer, killed = self._get_players_names(event)
+        player_killer, player_killed = Player(killer), Player(killed)
+        if active_game.has_player(killer):
+            player_killer = active_game.get_player(killer)
+        if active_game.has_player(killed):
+            player_killed = active_game.get_player(killed)
+        return player_killer, player_killed
+
+    def _get_players_names(self, event: str) -> Tuple[str, str]:
         match = self.players_pattern.findall(event)
-        killer, killed = match[0]
-        return Player(killer), Player(killed)
+        killer_name, killed_name = match[0]
+        return killer_name, killed_name
 
 
 class EventObservable:
@@ -80,7 +139,7 @@ class EventObservable:
     def add_handler(self, event_type: str, event_handler: EventHandler) -> None:
         self.event_handlers.append((event_type, event_handler))
 
-    def notify(self, event_type: str, event: str):
+    def notify(self, event_type: str, event: str) -> None:
         for _type, event_handler in self.event_handlers:
             if _type == event_type:
                 event_handler.handle(event)
@@ -89,43 +148,23 @@ class EventObservable:
 class GameRepository(abc.ABC):
 
     @abc.abstractmethod
-    def get_games(self):
+    def get_games(self) -> dict:
         pass
 
     @abc.abstractmethod
-    def get_game_by_uid(self, uid: str) -> dict:
+    def get_game_by_uid(self, uid: str) -> Game:
         pass
 
     @abc.abstractmethod
-    def add_new_game(self, uid) -> None:
+    def get_active_game(self) -> Game:
         pass
 
     @abc.abstractmethod
-    def shutdown_active_game(self) -> None:
+    def add(self, uid) -> None:
         pass
 
     @abc.abstractmethod
-    def get_active_game(self) -> dict:
-        pass
-
-    @abc.abstractmethod
-    def is_active_game_shutted_down(self) -> bool:
-        pass
-
-    @abc.abstractmethod
-    def add_player(self, player: Player) -> None:
-        pass
-
-    @abc.abstractmethod
-    def increase_kills_for_player(self, player: Player, kills: int) -> None:
-        pass
-
-    @abc.abstractmethod
-    def decrease_kills_for_player(self, player: Player, kills: int) -> None:
-        pass
-
-    @abc.abstractmethod
-    def increment_total_kills(self):
+    def update(self, game: Game) -> None:
         pass
 
 
@@ -134,10 +173,10 @@ class MemoryGameRepository(GameRepository):
     store = {}
     active_game_uid = ''
 
-    def get_games(self):
+    def get_games(self) -> dict:
         return self.store
 
-    def get_game_by_uid(self, uid: str) -> dict:
+    def get_game_by_uid(self, uid: str) -> Game:
         try:
             game = self.store[uid]
         except KeyError:
@@ -145,21 +184,7 @@ class MemoryGameRepository(GameRepository):
         else:
             return game
 
-    def add_new_game(self, uid) -> None:
-        game = {
-            'total_kills': 0,
-            'players': [],
-            'kills': {},
-            'shutted_down': False
-        }
-        self.store[uid] = game
-        self.active_game_uid = uid
-
-    def shutdown_active_game(self) -> None:
-        active_game = self.get_active_game()
-        active_game['shutted_down'] = True
-
-    def get_active_game(self):
+    def get_active_game(self) -> Game:
         try:
             game = self.store[self.active_game_uid]
         except KeyError:
@@ -167,32 +192,12 @@ class MemoryGameRepository(GameRepository):
         else:
             return game
 
-    def is_active_game_shutted_down(self) -> bool:
-        active_game = self.get_active_game()
-        return active_game['shutted_down']
+    def add(self, game: Game) -> None:
+        self.store[game.uid] = game
+        self.active_game_uid = game.uid
 
-    def add_player(self, player: Player) -> None:
-        active_game = self.get_active_game()
-        players = active_game['players']
-        if player.name not in players:
-            players.append(player.name)
-
-    def increase_kills_for_player(self, player: Player, kills: int) -> None:
-        active_game = self.get_active_game()
-        game_kills = active_game['kills']
-        game_kills.setdefault(player.name, 0)
-        game_kills[player.name] += kills
-
-    def decrease_kills_for_player(self, player: Player, kills: int) -> None:
-        active_game = self.get_active_game()
-        game_kills = active_game['kills']
-        game_kills.setdefault(player.name, 0)
-        if game_kills[player.name] > 0:
-            game_kills[player.name] -= kills
-
-    def increment_total_kills(self) -> None:
-        active_game = self.get_active_game()
-        active_game['total_kills'] += 1
+    def update(self, game: Game) -> None:
+        pass
 
 
 class LogParser:
@@ -216,8 +221,11 @@ class LogParser:
     def parse(self, log_file: str) -> None:
         file = self._read_log_file(log_file)
         for event in file:
-            event_type = self._get_event_type(event)
-            if event_type is not None:
+            try:
+                event_type = self._get_event_type(event)
+            except EventTypeNotMapped:
+                print(f'Event type {event} not mapped.')
+            else:
                 self.event_observable.notify(event_type, event)
 
     def _get_event_type(self, event: str) -> str:
@@ -229,7 +237,7 @@ class LogParser:
         try:
             return EventType(event_type)
         except ValueError:
-            return None
+            raise EventTypeNotMapped()
 
     def _read_log_file(self, log_file: str) -> Generator[str, None, None]:
         with open(log_file, 'r') as file:
