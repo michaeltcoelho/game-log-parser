@@ -6,7 +6,12 @@ from parser import LogParser, MemoryGameRepository
 
 app = Flask('game')
 
-game_repository = MemoryGameRepository()
+
+def get_game_repository():
+    return MemoryGameRepository()
+
+
+game_repository = get_game_repository()
 
 
 def format_game_to_dict(game):
@@ -32,13 +37,13 @@ def get_games():
 
 
 @app.route('/games/<uid>', methods=['GET'])
-def get_games_by_id(uid):
+def get_game_by_uid(uid):
     try:
         game = game_repository.get_game_by_uid(uid)
         return jsonify(format_game_to_dict(game)), 200
     except GameDoesNotExist:
         response = {
-            'message': 'Game not found.'
+            'message': 'Game not found'
         }
         return jsonify(response), 404
 
