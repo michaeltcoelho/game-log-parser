@@ -1,5 +1,4 @@
-from game.games import GameRepository
-from game.events import EventType, EventHandler, EventObservable
+from game import GameRepository, EventType, EventHandler, EventObservable
 
 
 class DummyRepository(GameRepository):

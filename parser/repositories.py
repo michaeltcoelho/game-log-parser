@@ -1,4 +1,4 @@
-from game.games import Game, GameRepository, GameDoesNotExist
+from game import Game, GameRepository, GameDoesNotExist
 
 
 class MemoryGameRepository(GameRepository):

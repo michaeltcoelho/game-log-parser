@@ -2,7 +2,7 @@ from unittest import mock
 
 import pytest
 
-from game.games import Game, GameDoesNotExist
+from game import Game, GameDoesNotExist
 from parser import MemoryGameRepository
 
 

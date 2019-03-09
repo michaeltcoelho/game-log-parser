@@ -2,8 +2,7 @@ import uuid
 import re
 from typing import Tuple
 
-from game.events import EventHandler
-from game.games import Game, Player
+from game import Game, Player, EventHandler
 
 
 class InitGameEventHandler(EventHandler):

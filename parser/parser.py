@@ -1,8 +1,7 @@
 import re
 from typing import Generator
 
-from game.events import EventObservable, EventType, EventTypeNotMapped
-from game.games import GameRepository
+from game import GameRepository, EventObservable, EventType, EventTypeNotMapped
 
 from parser.handlers import (InitGameEventHandler, ShutdownGameEventHandler,
                              KillEventHandler)

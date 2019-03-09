@@ -1,6 +1,6 @@
 from unittest import mock
 
-from game.games import Game
+from game import Game
 from parser import MemoryGameRepository
 from parser.handlers import (InitGameEventHandler, ShutdownGameEventHandler,
                              KillEventHandler)
