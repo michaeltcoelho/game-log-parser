@@ -1,6 +1,8 @@
 from flask import Flask, jsonify
 
-from parser import GameDoesNotExist, MemoryGameRepository, LogParser
+from game.games import GameDoesNotExist
+from parser import LogParser, MemoryGameRepository
+
 
 app = Flask('game')
 
