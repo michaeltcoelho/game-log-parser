@@ -26,8 +26,7 @@ class Player:
         self.kills += kills
 
     def decrease_kills(self, kills: int) -> None:
-        if self.kills > 0:
-            self.kills -= kills
+        self.kills = max(self.kills - kills, 0)
 
 
 class Game:

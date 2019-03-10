@@ -57,3 +57,10 @@ class TestPlayer:
         assert player.kills == 2
         player.decrease_kills(1)
         assert player.kills == 1
+
+    def test_should_kills_not_be_negative(self):
+        player = Player('foo')
+        player.increase_kills(1)
+        assert player.kills == 1
+        player.decrease_kills(2)
+        assert player.kills == 0
