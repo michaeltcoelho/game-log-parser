@@ -12,7 +12,7 @@ class PlayerDoesNotExist(Exception):
 
 class Player:
 
-    def __init__(self, name) -> None:
+    def __init__(self, name: str) -> None:
         self.name = name
         self.kills = 0
 
@@ -74,7 +74,7 @@ class GameRepository(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def add(self, uid) -> None:
+    def add(self, game: Game) -> None:
         pass
 
     @abc.abstractmethod

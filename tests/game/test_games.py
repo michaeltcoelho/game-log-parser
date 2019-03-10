@@ -51,7 +51,7 @@ class TestPlayer:
         player.increase_kills(2)
         assert player.kills == 3
 
-    def test_Should_decrease_player_kills(self):
+    def test_should_decrease_player_kills(self):
         player = Player('foo')
         player.increase_kills(2)
         assert player.kills == 2
