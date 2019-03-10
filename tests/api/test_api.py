@@ -23,7 +23,8 @@ class TestGameAPI:
         response = client.get(url_for('get_games'))
         assert response.status_code == 200
         assert 'games' in response.json
-        assert response.json['games'][game_uid]['total_kills'] == 1
+        assert response.json['games'][0]['uid'] == game_uid
+        assert response.json['games'][0]['total_kills'] == 1
 
     @mock.patch.object(MemoryGameRepository, 'store', {})
     def test_should_get_game_by_uid(self, client, game_with_player_with_one_kill):
