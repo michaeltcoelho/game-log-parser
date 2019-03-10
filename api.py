@@ -6,12 +6,7 @@ from parser import LogParser, MemoryGameRepository
 
 app = Flask('game')
 
-
-def get_game_repository():
-    return MemoryGameRepository()
-
-
-game_repository = get_game_repository()
+game_repository = MemoryGameRepository()
 
 
 def format_game_to_dict(game):

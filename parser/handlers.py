@@ -2,7 +2,7 @@ import uuid
 import re
 from typing import Tuple
 
-from game import Game, Player, EventHandler
+from game import Game, GameDoesNotExist, Player, EventHandler
 
 
 class InitGameEventHandler(EventHandler):
@@ -15,9 +15,16 @@ class InitGameEventHandler(EventHandler):
 class ShutdownGameEventHandler(EventHandler):
 
     def handle(self, event: str) -> None:
-        active_game = self.repository.get_active_game()
-        active_game.shutdown()
-        self.repository.update(active_game)
+        try:
+            active_game = self.repository.get_active_game()
+        except GameDoesNotExist:
+            handler_name = self.__class__.__name__
+            print(f'{handler_name}: No active game found.'
+                  '** SHUTDOWN_GAME event might have been triggered before '
+                  'INIT_GAME event.')
+        else:
+            active_game.shutdown()
+            self.repository.update(active_game)
 
 
 class KillEventHandler(EventHandler):
