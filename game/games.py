@@ -1,5 +1,5 @@
 import abc
-from typing import List, Optional
+from typing import List, Optional, MutableSet
 
 
 class GameDoesNotExist(Exception):
@@ -35,11 +35,10 @@ class Game:
         self.uid = uid
         self.total_kills = 0
         self.shutted_down = False
-        self.players: List[Player] = []
+        self.players: MutableSet[Player] = set([])
 
     def add_player(self, player: Player) -> None:
-        if not self.has_player(player.name):
-            self.players.append(player)
+        self.players.add(player)
 
     def increase_total_kills(self) -> None:
         self.total_kills += 1
@@ -50,12 +49,16 @@ class Game:
     def is_shutted_down(self) -> bool:
         return self.shutted_down
 
-    def has_player(self, name: str) -> bool:
-        return any([True for player in self.players if player.name == name])
-
     def get_player(self, name: str) -> Optional[Player]:
-        player = [player for player in self.players if player.name == name]
-        return player[0] if player else None
+        player_found = None
+        for player in self.players:
+            if player.name == name:
+                player_found = player
+                break
+        return player_found
+
+    def has_player(self, name: str) -> bool:
+        return bool(self.get_player(name))
 
 
 class GameRepository(abc.ABC):

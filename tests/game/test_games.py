@@ -7,7 +7,7 @@ class TestGame:
         game = Game('abc')
         player = Player('foo')
         game.add_player(player)
-        assert game.has_player(player.name)
+        assert player is game.get_player(player.name)
 
     def test_should_not_add_same_player_twice(self):
         game = Game('abc')
