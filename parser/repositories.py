@@ -1,10 +1,12 @@
+from typing import Dict
+
 from game import Game, GameRepository, GameDoesNotExist
 
 
 class MemoryGameRepository(GameRepository):
 
-    store = {}
-    active_game_uid = ''
+    store: Dict[str, Game] = {}
+    active_game_uid: str = ''
 
     def get_games(self) -> dict:
         return self.store

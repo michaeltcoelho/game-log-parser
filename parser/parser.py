@@ -42,7 +42,7 @@ class LogParser:
         match = self.event_type_pattern.findall(event)
         event_time, event_type = match[0]
         try:
-            return EventType(event_type)
+            return EventType(event_type).name
         except ValueError:
             raise EventTypeNotMapped()
 

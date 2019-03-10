@@ -32,7 +32,7 @@ class TestEventObservable:
                 pass
 
         event_stream = EventObservable()
-        event_stream.add_handler(EventType.INIT_GAME, DummyInitGameHandler())
+        event_stream.add_handler(EventType.INIT_GAME, DummyInitGameHandler(None))
 
         registered_handlers = dict(event_stream.event_handlers)
 

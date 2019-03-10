@@ -10,7 +10,7 @@ class TestEventHandler:
 
     def test_should_get_players_with_world_killer(self):
         game = Game('abc')
-        handler = KillEventHandler()
+        handler = KillEventHandler(None)
         event = '1:26 Kill: 1022 4 22: <world> killed Zeh by MOD_TRIGGER_HURT'
         killer, killed = handler.get_players(game, event)
         assert killer.is_world() is True
@@ -19,7 +19,7 @@ class TestEventHandler:
 
     def test_should_get_players(self):
         game = Game('abc')
-        handler = KillEventHandler()
+        handler = KillEventHandler(None)
         event = '1:26 Kill: 1022 4 22: Foo killed Bar by MOD_TRIGGER_HURT'
         killer, killed = handler.get_players(game, event)
         assert not killer.is_world()

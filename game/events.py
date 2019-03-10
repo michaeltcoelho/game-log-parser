@@ -1,5 +1,6 @@
 import abc
 import enum
+from typing import List, Tuple
 
 from .games import GameRepository
 
@@ -16,7 +17,7 @@ class EventType(enum.Enum):
 
 class EventHandler(abc.ABC):
 
-    def __init__(self, repository: GameRepository = None) -> None:
+    def __init__(self, repository: GameRepository) -> None:
         self.repository = repository
 
     @abc.abstractmethod
@@ -25,9 +26,10 @@ class EventHandler(abc.ABC):
 
 
 class EventObservable:
+    """A very simple implementation of Observer Pattern."""
 
     def __init__(self) -> None:
-        self.event_handlers = []
+        self.event_handlers: List[Tuple[str, EventHandler]] = []
 
     def add_handler(self, event_type: str, event_handler: EventHandler) -> None:
         self.event_handlers.append((event_type, event_handler))
