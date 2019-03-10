@@ -48,8 +48,8 @@ class LogParser:
         event_time, event_type = match[0]
         try:
             return EventType(event_type)
-        except ValueError:
-            raise EventTypeNotMapped()
+        except ValueError as err:
+            raise EventTypeNotMapped() from err
 
     def _read_log_file(self, log_file: str) -> Generator[str, None, None]:
         with open(log_file, 'r') as file:

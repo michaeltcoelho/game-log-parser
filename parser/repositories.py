@@ -14,16 +14,16 @@ class MemoryGameRepository(GameRepository):
     def get_game_by_uid(self, uid: str) -> Game:
         try:
             game = self.store[uid]
-        except KeyError:
-            raise GameDoesNotExist()
+        except KeyError as err:
+            raise GameDoesNotExist() from err
         else:
             return game
 
     def get_active_game(self) -> Game:
         try:
             game = self.store[self.active_game_uid]
-        except KeyError:
-            raise GameDoesNotExist()
+        except KeyError as err:
+            raise GameDoesNotExist() from err
         else:
             return game
 
