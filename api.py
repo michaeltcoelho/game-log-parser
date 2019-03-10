@@ -1,12 +1,18 @@
 from flask import Flask, jsonify
-
 from flasgger import Swagger
+
+from dynaconf.contrib import FlaskDynaconf
 
 from game.games import Game, GameDoesNotExist
 from parser import LogParser, MemoryGameRepository
 
 
 app = Flask('game')
+
+# setup settings
+FlaskDynaconf(app)
+
+# setup swagger
 app.config['SWAGGER'] = {
     'title': 'Game Documentation',
     'description': 'Luizalabs Challenge',
