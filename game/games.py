@@ -1,5 +1,5 @@
 import abc
-from typing import List, Optional, MutableSet
+from typing import Optional, MutableSet
 
 
 class GameDoesNotExist(Exception):

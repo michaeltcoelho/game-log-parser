@@ -17,7 +17,7 @@ class LogParser:
         self.event_observable = EventObservable()
         self._register_events_handlers()
 
-    def _register_events_handlers(self):
+    def _register_events_handlers(self) -> None:
         self.event_observable.add_handler(EventType.INIT_GAME,
                                           InitGameEventHandler(self.game_repository))
         self.event_observable.add_handler(EventType.SHUTDOWN_GAME,
@@ -29,20 +29,25 @@ class LogParser:
         file = self._read_log_file(log_file)
         for event in file:
             try:
-                event_type = self._get_event_type(event)
+                event_type: EventType = self._get_event_type(event)
             except EventTypeNotMapped:
                 print(f'Event type {event} not mapped.')
             else:
                 self.event_observable.notify(event_type, event)
 
-    def _get_event_type(self, event: str) -> str:
-        has_shuttdown_pattern = self.shutdown_game_pattern.match(event)
-        if has_shuttdown_pattern:
-            return EventType.SHUTDOWN_GAME.value
+    def _get_event_type(self, event: str) -> EventType:
+        if self._is_shutdown_event_type(event):
+            return EventType.SHUTDOWN_GAME
+        return self._get_generic_event_type(event)
+
+    def _is_shutdown_event_type(self, event: str) -> bool:
+        return bool(self.shutdown_game_pattern.match(event))
+
+    def _get_generic_event_type(self, event: str) -> EventType:
         match = self.event_type_pattern.findall(event)
         event_time, event_type = match[0]
         try:
-            return EventType(event_type).name
+            return EventType(event_type)
         except ValueError:
             raise EventTypeNotMapped()
 

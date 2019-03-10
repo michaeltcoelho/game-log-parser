@@ -29,12 +29,12 @@ class EventObservable:
     """A very simple implementation of Observer Pattern."""
 
     def __init__(self) -> None:
-        self.event_handlers: List[Tuple[str, EventHandler]] = []
+        self.event_handlers: List[Tuple[EventType, EventHandler]] = []
 
-    def add_handler(self, event_type: str, event_handler: EventHandler) -> None:
+    def add_handler(self, event_type: EventType, event_handler: EventHandler) -> None:
         self.event_handlers.append((event_type, event_handler))
 
-    def notify(self, event_type: str, event: str) -> None:
+    def notify(self, event_type: EventType, event: str) -> None:
         for _type, event_handler in self.event_handlers:
             if _type == event_type:
                 event_handler.handle(event)
