@@ -57,3 +57,21 @@ Running server:
 ```bash
 make server
 ```
+
+### Making requests using Curl
+
+Get all games
+
+```
+curl -x GET -H "Content-Type: application/json" http://127.0.0.1/games
+```
+
+Get game by uid
+
+```
+curl -X GET -H "Content-Type: application/json" http://127.0.0.1/games/<replace by a game's uid>
+```
+
+### API Documentation
+
+Access `http://127.0.0.1/` on your favorite browser.
