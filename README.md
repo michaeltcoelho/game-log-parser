@@ -1,52 +1,59 @@
 # Quake log parser
 
-## Task 1 - Construa um parser para o arquivo de log games.log e exponha uma API de consulta.
+## Luizalabs challenge
 
-O arquivo games.log é gerado pelo servidor de quake 3 arena. Ele registra todas as informações dos jogos, quando um jogo começa, quando termina, quem matou quem, quem morreu pq caiu no vazio, quem morreu machucado, entre outros.
+### Proposed Solution
 
-O parser deve ser capaz de ler o arquivo, agrupar os dados de cada jogo, e em cada jogo deve coletar as informações de morte.
+Two packages are provided, the first one is `game`, which provides domain entities and abstract classes, 
+and the second one is `parser` which is the concrete implementation of the game's log parser.
 
-### Exemplo
+The `parser.LogParser` is responsible for reading the log file and to interpret the type of event
+by applying a regex expression to each line in the log file.
+When an event type is matched then the log parser will notify all event handlers registered to the `games.events.EventObservable` instance, which are
+instested in that event type notified. We have event handlers like:
+- `parser.handlers.InitGameEventHandler`: responsible for handling `InitGame` events;
+- `parser.handlers.ShutdownGameEventHandler`: responsible for handling `ShutdownGame` events, and;
+- `parser.handlers.KillEventHandler`: responsible for handling `Kill` events.
 
-      21:42 Kill: 1022 2 22: <world> killed Isgalamido by MOD_TRIGGER_HURT
-  
-  O player "Isgalamido" morreu pois estava ferido e caiu de uma altura que o matou.
+For providing persistency for entities it's been choosen the `Repository` Pattern.
+We have a concrete implementation of `game.games.GameRepository` in `parser.repositories.MemoryGameRepository` 
+whose role is to persist information in memory by making use of a dictionary.
 
-      2:22 Kill: 3 2 10: Isgalamido killed Dono da Bola by MOD_RAILGUN
-  
-  O player "Isgalamido" matou o player Dono da Bola usando a arma Railgun.
-  
-Para cada jogo o parser deve gerar algo como:
+### Requirements
 
-    game_1: {
-        total_kills: 45;
-        players: ["Dono da bola", "Isgalamido", "Zeh"]
-        kills: {
-          "Dono da bola": 5,
-          "Isgalamido": 18,
-          "Zeh": 20
-        }
-      }
+* Python 3.7.1.
+* An activated python virtualenv.
 
+#### Considering you have already installed the requirements:
 
+### Installing
 
-### Observações
+Clone the repository and install it:
 
-1. Quando o `<world>` mata o player ele perde -1 kill.
-2. `<world>` não é um player e não deve aparecer na lista de players e nem no dicionário de kills.
-3. `total_kills` são os kills dos games, isso inclui mortes do `<world>`.
+```bash
+git clone https://github.com/michaeltcoelho/game-log-parser.git
+```
 
-## Task 2 - Após construir o parser construa uma API que faça a exposição de um método de consulta que retorne um relatório de cada jogo.
+Go to `/game-log-parser` directory:
 
+Run the following command for installing dependencies:
 
-# Requisitos
+```bash
+make install
+```
 
-1. Use a linguagem que você tem mais habilidade (temos preferência por node.js, java, golang ou python, mas pode ser usado qualquer linguagem desde que explicado a prefência).
-2. As APIs deverão seguir o modelo RESTFul  com formato JSON  
-3. Faça testes unitários, suite de testes bem organizados. (Dica. De uma atenção especial a esse item!)
-4. Use git e tente fazer commits pequenos e bem descritos.
-5. Faça pelo menos um README explicando como fazer o setup, uma explicação da solução proposta, o mínimo de documentação para outro desenvolvedor entender seu código
-6. Siga o que considera boas práticas de programação, coisas que um bom desenvolvedor olhe no seu código e não ache "feio" ou "ruim".
-7. Após concluir o teste suba em um repositório privado e nos mande o link
+### Testing
 
-HAVE FUN :)
+Running tests:
+
+```bash
+make test
+```
+
+### Running
+
+Running server:
+
+```bash
+make server
+```

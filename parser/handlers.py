@@ -38,8 +38,8 @@ class KillEventHandler(EventHandler):
         if player_killer.is_world():
             player_killed.decrease_kills(1)
         else:
-            active_game.add_player(player_killer)
             player_killer.increase_kills(1)
+            active_game.add_player(player_killer)
         active_game.add_player(player_killed)
         active_game.increase_total_kills()
         self.repository.update(active_game)
