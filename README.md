@@ -9,7 +9,7 @@ and the second one is `parser` which is the concrete implementation of the game'
 
 The `parser.LogParser` is responsible for reading the log file and to interpret the type of event
 by applying a regex expression to each line in the log file.
-When an event type is matched then the log parser will notify all event handlers registered to the `games.events.EventObservable` instance, which are
+When an event type is matched then the log parser will notify all event handlers registered to the `games.events.EventObservable` (which is a very simple implementation of the Observer Pattern) instance, which are
 instested in that event type notified. We have event handlers like:
 - `parser.handlers.InitGameEventHandler`: responsible for handling `InitGame` events;
 - `parser.handlers.ShutdownGameEventHandler`: responsible for handling `ShutdownGame` events, and;
