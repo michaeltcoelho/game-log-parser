@@ -15,7 +15,7 @@ FlaskDynaconf(app)
 # setup swagger
 app.config['SWAGGER'] = {
     'title': 'Game Documentation',
-    'description': 'Luizalabs Challenge',
+    'description': 'Quake log parser',
     'uiversion': 3,
     'specs_route': '/',
 }
