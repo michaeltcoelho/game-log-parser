@@ -1,7 +1,5 @@
 # Quake log parser
 
-## Luizalabs challenge
-
 ### Proposed Solution
 
 Two packages are provided, the first one is `game`, which provides domain entities and abstract classes, 
